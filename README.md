@@ -13,7 +13,7 @@ uv venv aws-iot
 # Activate virtual env aws-iot
 
 ```
-source aws-iot
+source aws-iot/bin/activate
 ```
 
 # Install aws-iot-sdk-v2
