@@ -22,6 +22,12 @@ source aws-iot/bin/activate
 uv pip install awsiotsdk
 ```
 
+# Install GPIO
+
+```
+uv pip install RPi.GPIO
+```
+
 # Install pm2
 
 ```
