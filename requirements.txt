@@ -1,0 +1,12 @@
+# AWS IoT SDK dependencies
+awsiotsdk>=1.12.0
+
+# Flask web framework
+Flask>=2.3.0
+Flask-CORS>=4.0.0
+
+# GPIO control (Raspberry Pi specific)
+RPi.GPIO>=0.7.1; sys_platform == "linux"
+
+# Logging and utilities
+python-json-logger>=2.0.7
