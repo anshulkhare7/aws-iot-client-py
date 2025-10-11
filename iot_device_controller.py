@@ -39,12 +39,18 @@ class IoTDeviceController:
         # Create client builder
         client_bootstrap = io.ClientBootstrap.get_or_create_static_default()
 
+        # Get certificate paths from config
+        certs = self.config.get('certificates', {})
+        cert_path = certs.get('certPath', 'certs/raspi-bglr.cert.pem')
+        private_key_path = certs.get('privateKeyPath', 'certs/raspi-bglr.private.key')
+        root_ca_path = certs.get('rootCAPath', 'certs/AmazonRootCA1.pem')
+
         # Create the client directly
         client = mqtt5_client_builder.mtls_from_path(
             endpoint=self.config['endpoint'],
-            cert_filepath="certs/raspi-bglr.cert.pem",
-            pri_key_filepath="certs/raspi-bglr.private.key",
-            ca_filepath="certs/AmazonRootCA1.pem",
+            cert_filepath=cert_path,
+            pri_key_filepath=private_key_path,
+            ca_filepath=root_ca_path,
             client_bootstrap=client_bootstrap,
             client_id=self.config['deviceId'],
             on_publish_callback_fn=None,
