@@ -1,5 +1,5 @@
 certs/*
-config/*
+config/device.json
 __pycache__/
 *.pyc
 .DS_Store

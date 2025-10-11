@@ -40,6 +40,7 @@ This is a **Python-based AWS IoT Device Client** that runs on Raspberry Pi devic
 ### TLS Certificates (certs/ directory)
 
 Required certificates for mutual TLS authentication:
+
 - `raspi-bglr.cert.pem`: Device certificate
 - `raspi-bglr.private.key`: Device private key
 - `AmazonRootCA1.pem`: Amazon Root CA certificate
@@ -65,17 +66,20 @@ aws-iot-client-py/
 ### Prerequisites
 
 1. **Install UV (Python package manager)**:
+
    ```bash
    curl -LsSf https://astral.sh/uv/install.sh | sudo env UV_INSTALL_DIR="/usr/local/bin" sh
    ```
 
 2. **Create and activate virtual environment**:
+
    ```bash
    uv venv aws-iot
    source aws-iot/bin/activate
    ```
 
 3. **Install AWS IoT SDK v2**:
+
    ```bash
    uv pip install awsiotsdk
    ```
@@ -132,6 +136,7 @@ pm2 stop aws-iot-client
 ### IoTDeviceController Class
 
 **Key Methods:**
+
 - `__init__(config_file)`: Load configuration and initialize client
 - `start()`: Connect to AWS IoT Core and start heartbeat thread
 - `stop()`: Gracefully disconnect and stop heartbeat thread
@@ -140,6 +145,7 @@ pm2 stop aws-iot-client
 - `_heartbeat_loop()`: Background thread for periodic heartbeat publishing
 
 **Lifecycle Callbacks:**
+
 - `_on_connection_success()`: Called when successfully connected
 - `_on_connection_failure()`: Called on connection failure
 - `_on_disconnection()`: Called when disconnected
@@ -173,6 +179,7 @@ pm2 stop aws-iot-client
 ## Deployment
 
 Use the provided `deploy.sh` script for deployment to Raspberry Pi devices. Ensure:
+
 1. Device configuration is updated in `config/device.json`
 2. TLS certificates are present in `certs/` directory
 3. PM2 is configured for auto-start
@@ -201,6 +208,7 @@ Use the provided `deploy.sh` script for deployment to Raspberry Pi devices. Ensu
 ## Integration
 
 This client integrates with the broader IoT monitoring system:
+
 - **Frontend Dashboard**: Displays device online/offline status based on heartbeat messages
 - **Backend API**: Processes heartbeat messages from AWS IoT Core
 - **AWS IoT Core**: Central message broker and device registry
@@ -211,3 +219,11 @@ This client integrates with the broader IoT monitoring system:
 - Use AWS IAM policies to restrict IoT Core access
 - Rotate device certificates periodically
 - Use least-privilege policies for MQTT topics
+
+## KEEP IN MIND
+
+1. Whenever I make a suggestion or question your implentation, don't accept it on face value. I am not a python expert and I could be wrong. Verify what I am saying before accepting them.
+
+2. After adding/updating the code, check again for unused imports. Remove them if any import becomes unused because of your changes.
+
+3. Don't forget to update the deploy script (deploy.sh) when you introduce new files or delete/relocate existing files.

@@ -5,26 +5,21 @@ import time
 import threading
 import signal
 import sys
-import os
 from awsiot import mqtt5_client_builder
 from awscrt import mqtt5, io
 from concurrent.futures import Future
+from config import ConfigManager
 
 class IoTDeviceController:
     def __init__(self, config_file="config/device.json"):
-        self.config = self._load_config(config_file)
+        self.config_manager = ConfigManager(config_file)
         self.client = None
         self.is_running = False
         self.heartbeat_thread = None
 
-    def _load_config(self, config_file):
-        """Load device configuration from JSON file"""
-        with open(config_file, 'r') as f:
-            return json.load(f)
-
     def _on_connection_success(self, connack_packet):
         """Callback when connection succeeds"""
-        print(f"Connected to AWS IoT Core at {self.config['endpoint']}")
+        print(f"Connected to AWS IoT Core at {self.config_manager.endpoint}")
 
     def _on_connection_failure(self, connack_packet):
         """Callback when connection fails"""
@@ -39,20 +34,14 @@ class IoTDeviceController:
         # Create client builder
         client_bootstrap = io.ClientBootstrap.get_or_create_static_default()
 
-        # Get certificate paths from config
-        certs = self.config.get('certificates', {})
-        cert_path = certs.get('certPath', 'certs/raspi-bglr.cert.pem')
-        private_key_path = certs.get('privateKeyPath', 'certs/raspi-bglr.private.key')
-        root_ca_path = certs.get('rootCAPath', 'certs/AmazonRootCA1.pem')
-
         # Create the client directly
         client = mqtt5_client_builder.mtls_from_path(
-            endpoint=self.config['endpoint'],
-            cert_filepath=cert_path,
-            pri_key_filepath=private_key_path,
-            ca_filepath=root_ca_path,
+            endpoint=self.config_manager.endpoint,
+            cert_filepath=self.config_manager.cert_path,
+            pri_key_filepath=self.config_manager.private_key_path,
+            ca_filepath=self.config_manager.root_ca_path,
             client_bootstrap=client_bootstrap,
-            client_id=self.config['deviceId'],
+            client_id=self.config_manager.device_id,
             on_publish_callback_fn=None,
             on_lifecycle_event_stopped_fn=None,
             on_lifecycle_event_attempting_connect_fn=None,
@@ -69,7 +58,7 @@ class IoTDeviceController:
             return
 
         heartbeat_payload = {
-            "deviceId": self.config['deviceId'],
+            "deviceId": self.config_manager.device_id,
             "timestamp": int(time.time()),
             "status": "online"
         }
@@ -90,7 +79,7 @@ class IoTDeviceController:
 
     def _heartbeat_loop(self):
         """Background thread for sending heartbeats at configured interval"""
-        interval = self.config.get('heartbeatInterval', 60)  # Default to 60 seconds
+        interval = self.config_manager.heartbeat_interval
         while self.is_running:
             self._publish_heartbeat()
             # Sleep for configured interval, but check every second if we should stop
@@ -102,7 +91,7 @@ class IoTDeviceController:
     def start(self):
         """Start the IoT client and heartbeat publishing"""
         try:
-            print(f"Starting IoT client for device: {self.config['deviceId']}")
+            print(f"Starting IoT client for device: {self.config_manager.device_id}")
 
             # Create and start client
             self.client = self._create_client()
@@ -117,8 +106,7 @@ class IoTDeviceController:
             self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
             self.heartbeat_thread.start()
 
-            interval = self.config.get('heartbeatInterval', 60)
-            print(f"IoT client started successfully. Publishing heartbeats every {interval} seconds...")
+            print(f"IoT client started successfully. Publishing heartbeats every {self.config_manager.heartbeat_interval} seconds...")
             return True
 
         except Exception as e:
