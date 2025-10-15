@@ -54,6 +54,10 @@ log_info "Copying application files..."
 log_info "  - Copying iot_device_controller.py"
 scp "$LOCAL_DIR/iot_device_controller.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
 
+# Copy constants file
+log_info "  - Copying constants.py"
+scp "$LOCAL_DIR/constants.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
+
 # Copy config module
 log_info "  - Copying config module"
 scp "$LOCAL_DIR/config/__init__.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/config/"

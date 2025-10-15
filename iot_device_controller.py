@@ -9,9 +9,19 @@ from awsiot import mqtt5_client_builder
 from awscrt import mqtt5, io
 from concurrent.futures import Future
 from config import ConfigManager
+from constants import (
+    TOPIC_HEARTBEAT,
+    TIMEOUT_MQTT_PUBLISH,
+    TIMEOUT_CONNECTION_WAIT,
+    TIMEOUT_THREAD_JOIN,
+    STATUS_ONLINE,
+    SLEEP_INTERVAL_MAIN_LOOP,
+    SLEEP_INTERVAL_HEARTBEAT_CHECK,
+    DEFAULT_CONFIG_FILE
+)
 
 class IoTDeviceController:
-    def __init__(self, config_file="config/device.json"):
+    def __init__(self, config_file=DEFAULT_CONFIG_FILE):
         self.config_manager = ConfigManager(config_file)
         self.client = None
         self.is_running = False
@@ -60,11 +70,11 @@ class IoTDeviceController:
         heartbeat_payload = {
             "deviceId": self.config_manager.device_id,
             "timestamp": int(time.time()),
-            "status": "online"
+            "status": STATUS_ONLINE
         }
 
         publish_packet = mqtt5.PublishPacket(
-            topic="devices/heartbeat",
+            topic=TOPIC_HEARTBEAT,
             payload=json.dumps(heartbeat_payload),
             qos=mqtt5.QoS.AT_LEAST_ONCE
         )
@@ -72,7 +82,7 @@ class IoTDeviceController:
         try:
             publish_future = self.client.publish(publish_packet)
             # Wait for publish to complete
-            publish_future.result(timeout=10)
+            publish_future.result(timeout=TIMEOUT_MQTT_PUBLISH)
             print(f"Heartbeat published: {heartbeat_payload}")
         except Exception as e:
             print(f"Failed to publish heartbeat: {e}")
@@ -86,7 +96,7 @@ class IoTDeviceController:
             for _ in range(interval):
                 if not self.is_running:
                     break
-                time.sleep(1)
+                time.sleep(SLEEP_INTERVAL_HEARTBEAT_CHECK)
 
     def start(self):
         """Start the IoT client and heartbeat publishing"""
@@ -99,7 +109,7 @@ class IoTDeviceController:
 
             # Wait for connection with a simple delay
             print("Waiting for connection...")
-            time.sleep(5)  # Give time for connection to establish
+            time.sleep(TIMEOUT_CONNECTION_WAIT)  # Give time for connection to establish
 
             # Start heartbeat thread
             self.is_running = True
@@ -120,7 +130,7 @@ class IoTDeviceController:
         self.is_running = False
 
         if self.heartbeat_thread:
-            self.heartbeat_thread.join(timeout=5)
+            self.heartbeat_thread.join(timeout=TIMEOUT_THREAD_JOIN)
 
         if self.client:
             self.client.stop()
@@ -148,7 +158,7 @@ def main():
         try:
             # Keep the main thread alive
             while True:
-                time.sleep(1)
+                time.sleep(SLEEP_INTERVAL_MAIN_LOOP)
         except KeyboardInterrupt:
             pass
 
