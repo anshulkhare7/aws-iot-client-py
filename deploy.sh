@@ -58,6 +58,15 @@ scp "$LOCAL_DIR/iot_device_controller.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR
 log_info "  - Copying constants.py"
 scp "$LOCAL_DIR/constants.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
 
+# Copy equipment status reader
+log_info "  - Copying equipment_status_reader.py"
+scp "$LOCAL_DIR/equipment_status_reader.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/"
+
+# Copy data directory
+log_info "  - Copying data directory"
+ssh "$REMOTE_USER@$REMOTE_HOST" "mkdir -p $REMOTE_DIR/data"
+scp "$LOCAL_DIR/data/status.json" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/data/"
+
 # Copy config module
 log_info "  - Copying config module"
 scp "$LOCAL_DIR/config/__init__.py" "$REMOTE_USER@$REMOTE_HOST:$REMOTE_DIR/config/"

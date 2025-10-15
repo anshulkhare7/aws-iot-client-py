@@ -9,14 +9,17 @@ from awsiot import mqtt5_client_builder
 from awscrt import mqtt5, io
 from concurrent.futures import Future
 from config import ConfigManager
+from equipment_status_reader import EquipmentStatusReader
 from constants import (
     TOPIC_HEARTBEAT,
+    TOPIC_EQUIPMENT_STATUS,
     TIMEOUT_MQTT_PUBLISH,
     TIMEOUT_CONNECTION_WAIT,
     TIMEOUT_THREAD_JOIN,
     STATUS_ONLINE,
     SLEEP_INTERVAL_MAIN_LOOP,
     SLEEP_INTERVAL_HEARTBEAT_CHECK,
+    SLEEP_INTERVAL_EQUIPMENT_STATUS,
     DEFAULT_CONFIG_FILE
 )
 
@@ -26,6 +29,8 @@ class IoTDeviceController:
         self.client = None
         self.is_running = False
         self.heartbeat_thread = None
+        self.equipment_status_reader = EquipmentStatusReader()
+        self.equipment_status_thread = None
 
     def _on_connection_success(self, connack_packet):
         """Callback when connection succeeds"""
@@ -98,6 +103,51 @@ class IoTDeviceController:
                     break
                 time.sleep(SLEEP_INTERVAL_HEARTBEAT_CHECK)
 
+    def _publish_equipment_status(self):
+        """Publish equipment status messages"""
+        if not self.client:
+            return
+
+        # Read equipment status from file
+        equipment_list = self.equipment_status_reader.read_status()
+
+        if not equipment_list:
+            print("No equipment status data to publish")
+            return
+
+        # Publish status for each equipment
+        for equipment in equipment_list:
+            equipment_payload = {
+                "deviceId": self.config_manager.device_id,
+                "timestamp": int(time.time()),
+                "equipmentId": equipment.get("id", "unknown"),
+                "status": equipment.get("status", False)
+            }
+
+            publish_packet = mqtt5.PublishPacket(
+                topic=TOPIC_EQUIPMENT_STATUS,
+                payload=json.dumps(equipment_payload),
+                qos=mqtt5.QoS.AT_LEAST_ONCE
+            )
+
+            try:
+                publish_future = self.client.publish(publish_packet)
+                # Wait for publish to complete
+                publish_future.result(timeout=TIMEOUT_MQTT_PUBLISH)
+                print(f"Equipment status published: {equipment_payload}")
+            except Exception as e:
+                print(f"Failed to publish equipment status: {e}")
+
+    def _equipment_status_loop(self):
+        """Background thread for publishing equipment status at regular intervals"""
+        while self.is_running:
+            self._publish_equipment_status()
+            # Sleep for configured interval, but check every second if we should stop
+            for _ in range(SLEEP_INTERVAL_EQUIPMENT_STATUS):
+                if not self.is_running:
+                    break
+                time.sleep(SLEEP_INTERVAL_HEARTBEAT_CHECK)
+
     def start(self):
         """Start the IoT client and heartbeat publishing"""
         try:
@@ -116,7 +166,12 @@ class IoTDeviceController:
             self.heartbeat_thread = threading.Thread(target=self._heartbeat_loop, daemon=True)
             self.heartbeat_thread.start()
 
+            # Start equipment status thread
+            self.equipment_status_thread = threading.Thread(target=self._equipment_status_loop, daemon=True)
+            self.equipment_status_thread.start()
+
             print(f"IoT client started successfully. Publishing heartbeats every {self.config_manager.heartbeat_interval} seconds...")
+            print(f"Publishing equipment status every {SLEEP_INTERVAL_EQUIPMENT_STATUS} seconds...")
             return True
 
         except Exception as e:
@@ -131,6 +186,9 @@ class IoTDeviceController:
 
         if self.heartbeat_thread:
             self.heartbeat_thread.join(timeout=TIMEOUT_THREAD_JOIN)
+
+        if self.equipment_status_thread:
+            self.equipment_status_thread.join(timeout=TIMEOUT_THREAD_JOIN)
 
         if self.client:
             self.client.stop()

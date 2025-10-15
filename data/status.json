@@ -1,0 +1,10 @@
+[
+  {
+    "id": "EQ-BGLR-001-BLOWER",
+    "status": true
+  },
+  {
+    "id": "EQ-BGLR-001-VIBROFEEDER",
+    "status": false
+  }
+]

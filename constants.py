@@ -2,6 +2,7 @@
 
 # MQTT Topics
 TOPIC_HEARTBEAT = "devices/heartbeat"
+TOPIC_EQUIPMENT_STATUS = "device/data"
 
 # Timeouts (in seconds)
 TIMEOUT_MQTT_PUBLISH = 10
@@ -15,6 +16,7 @@ STATUS_OFFLINE = "offline"
 # Sleep intervals (in seconds)
 SLEEP_INTERVAL_MAIN_LOOP = 1
 SLEEP_INTERVAL_HEARTBEAT_CHECK = 1
+SLEEP_INTERVAL_EQUIPMENT_STATUS = 30
 
 # Default configuration
 DEFAULT_CONFIG_FILE = "config/device.json"
