@@ -1,0 +1,5 @@
+# AWS IoT SDK for Python
+awsiotsdk>=1.11.0
+
+# Modbus communication library for PLC
+pymodbus>=3.0.0

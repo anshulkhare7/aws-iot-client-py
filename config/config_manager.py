@@ -2,7 +2,7 @@
 
 import json
 import os
-from typing import Dict, Any
+from typing import Dict, Any, List
 
 
 class ConfigManager:
@@ -77,6 +77,26 @@ class ConfigManager:
         """Get root CA certificate path."""
         certs = self._config.get('certificates', {})
         return certs.get('rootCAPath', 'certs/AmazonRootCA1.pem')
+
+    @property
+    def equipment_config(self) -> List[Dict[str, Any]]:
+        """
+        Get equipment configuration list.
+
+        Returns:
+            List of equipment configurations, or empty list if not present.
+        """
+        return self._config.get('equipments', [])
+
+    @property
+    def plc_config(self) -> Dict[str, Any]:
+        """
+        Get PLC connection configuration.
+
+        Returns:
+            Dictionary containing PLC connection settings, or empty dict if not present.
+        """
+        return self._config.get('plc', {})
 
     def get(self, key: str, default: Any = None) -> Any:
         """

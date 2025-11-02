@@ -1,4 +1,51 @@
 #!/usr/bin/env python3
+"""
+IoT Device Controller with PLC Integration
+
+This module controls AWS IoT device communication and publishes equipment status
+and data read from PLC via Modbus RTU.
+
+PLC Configuration Requirements:
+-------------------------------
+The device.json configuration file must include the following sections:
+
+1. PLC Connection Settings (required):
+   "plc": {
+     "port": "/dev/ttyUSB0",        # Serial port for PLC connection
+     "baudrate": 9600,               # Communication speed (default: 9600)
+     "bytesize": 7,                  # Data bits (default: 7 for Delta PLC)
+     "parity": "E",                  # Parity bit (E=Even, default for Delta)
+     "stopbits": 1,                  # Stop bits (default: 1)
+     "timeout": 3,                   # Communication timeout in seconds
+     "slaveAddress": 1               # Modbus slave address (default: 1)
+   }
+
+2. Equipment Configuration (required):
+   "equipments": [
+     {
+       "id": "EQ-SITE-001-BLOWER",   # Unique equipment identifier
+       "registers": {
+         "status": "Y0",              # Status register (Y/M/X for boolean, D for integer)
+         "data": "D0"                 # Data register (optional, typically D registers)
+       }
+     }
+   ]
+
+Register Types Supported:
+- Y (Outputs): Boolean values from PLC output coils
+- M (Coils): Boolean values from PLC internal relays
+- X (Inputs): Boolean values from PLC input contacts
+- D (Data): Integer values (0-65535) from PLC data registers
+
+Example equipment status published to AWS IoT:
+{
+  "deviceId": "site-001",
+  "timestamp": 1234567890,
+  "equipmentId": "EQ-SITE-001-BLOWER",
+  "status": true,
+  "data": 1250
+}
+"""
 
 import json
 import time
@@ -9,7 +56,8 @@ from awsiot import mqtt5_client_builder
 from awscrt import mqtt5, io
 from concurrent.futures import Future
 from config import ConfigManager
-from equipment_status_reader import EquipmentStatusReader
+from equipment_reader import EquipmentReader
+from plc_lib import DeltaPLC
 from constants import (
     TOPIC_HEARTBEAT,
     TOPIC_EQUIPMENT_STATUS,
@@ -29,7 +77,12 @@ class IoTDeviceController:
         self.client = None
         self.is_running = False
         self.heartbeat_thread = None
-        self.equipment_status_reader = EquipmentStatusReader()
+
+        # Initialize PLC reader with configuration
+        self.plc_reader = DeltaPLC(self.config_manager.plc_config)
+
+        # Initialize equipment reader with config manager and PLC reader
+        self.equipment_reader = EquipmentReader(self.config_manager, self.plc_reader)
         self.equipment_status_thread = None
 
     def _on_connection_success(self, connack_packet):
@@ -109,7 +162,7 @@ class IoTDeviceController:
             return
 
         # Read equipment status from file
-        equipment_list = self.equipment_status_reader.read_status()
+        equipment_list = self.equipment_reader.read()
 
         if not equipment_list:
             print("No equipment status data to publish")
