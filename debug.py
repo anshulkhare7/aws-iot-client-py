@@ -2,12 +2,13 @@
 """
 Blower Control Debug Utility
 
-Simple command-line utility to turn the blower (Y0 register) ON or OFF.
+Simple command-line utility to turn the blower (Y0 register) ON or OFF and read D1 register.
 
 Usage:
-    python debug.py on    # Turn blower ON
-    python debug.py off   # Turn blower OFF
+    python debug.py on     # Turn blower ON
+    python debug.py off    # Turn blower OFF
     python debug.py status # Read current blower status
+    python debug.py d1     # Read D1 register value
 """
 
 import sys
@@ -22,19 +23,20 @@ from config.config_manager import ConfigManager
 
 def main():
     if len(sys.argv) < 2:
-        print("Usage: python debug.py [on|off|status]")
+        print("Usage: python debug.py [on|off|status|d1]")
         print()
         print("Commands:")
         print("  on      - Turn blower ON (Y0=True)")
         print("  off     - Turn blower OFF (Y0=False)")
         print("  status  - Read current blower status")
+        print("  d1      - Read D1 register value")
         sys.exit(1)
 
     command = sys.argv[1].lower()
 
-    if command not in ['on', 'off', 'status']:
+    if command not in ['on', 'off', 'status', 'd1']:
         print(f"Error: Invalid command '{command}'")
-        print("Valid commands: on, off, status")
+        print("Valid commands: on, off, status, d1")
         sys.exit(1)
 
     try:
@@ -105,6 +107,18 @@ def main():
             else:
                 print("ERROR: Failed to turn blower OFF")
                 sys.exit(1)
+
+        elif command == 'd1':
+            # Read D1 register
+            print("Reading D1 register...")
+            result = plc.read_d_registers(1, 1)
+
+            if result is None or len(result) == 0:
+                print("ERROR: Failed to read D1 register")
+                sys.exit(1)
+
+            value = result[0]
+            print(f"✓ D1 register value: {value}")
 
         # Disconnect
         plc.disconnect()
