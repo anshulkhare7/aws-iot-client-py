@@ -17,7 +17,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from plc_lib import DeltaPLC
-from config import ConfigManager
+from config.config_manager import ConfigManager
 
 
 def main():
