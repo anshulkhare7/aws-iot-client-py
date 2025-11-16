@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Delta DVP10SX PLC - REST API Server
-Production version with singleton connection and proper error handling
+UPDATED - Adds M100-M103 support for complete ladder logic exposure
 """
 
 from flask import Flask, jsonify, request, send_from_directory
@@ -48,10 +48,18 @@ def health_check():
 
 @app.route('/api/status', methods=['GET'])
 def get_status():
-    """Get complete PLC status"""
+    """Get complete PLC status including M100-M103"""
     try:
         status = plc.get_all_status()
         if status:
+            # CRITICAL: Add M100-M103 to M coils
+            m100_103 = plc.read_m_coils(100, 4)
+            if m100_103:
+                status['m_coils']['M100'] = bool(m100_103[0])
+                status['m_coils']['M101'] = bool(m100_103[1])
+                status['m_coils']['M102'] = bool(m100_103[2])
+                status['m_coils']['M103'] = bool(m100_103[3])
+            
             return jsonify(status), 200
         else:
             return jsonify({
@@ -69,6 +77,14 @@ def get_status_summary():
         status = plc.get_all_status()
         if not status:
             return jsonify({'error': 'Failed to read PLC'}), 500
+        
+        # Add M100-M103
+        m100_103 = plc.read_m_coils(100, 4)
+        if m100_103:
+            status['m_coils']['M100'] = bool(m100_103[0])
+            status['m_coils']['M101'] = bool(m100_103[1])
+            status['m_coils']['M102'] = bool(m100_103[2])
+            status['m_coils']['M103'] = bool(m100_103[3])
         
         # Filter to show only active/non-zero items
         summary = {
@@ -160,7 +176,7 @@ def d_register_range(start, count):
 
 @app.route('/api/m/<int:address>', methods=['GET', 'POST'])
 def m_coil(address):
-    """Read or write M coil"""
+    """Read or write M coil (including M100-M103)"""
     try:
         if request.method == 'GET':
             # Read single coil
@@ -276,8 +292,7 @@ def connect():
         else:
             return jsonify({
                 'success': False,
-                'error': 'Failed to connect',
-                'last_error': plc._last_error
+                'error': 'Failed to connect'
             }), 500
     except Exception as e:
         logger.error(f"Connect error: {e}")

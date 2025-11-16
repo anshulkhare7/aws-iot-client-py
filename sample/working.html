@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLC Dashboard - Exact Percentage Mapping</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e, #2d3561);
+            color: #eee;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        .container { max-width: 1600px; margin: 0 auto; }
+        
+        .header {
+            background: linear-gradient(135deg, #0f3460, #16213e);
+            padding: 25px;
+            border-radius: 15px;
+            margin-bottom: 25px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        .header h1 { color: #00d9ff; font-size: 2.2em; margin-bottom: 15px; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; flex-wrap: wrap; }
+        .status-item { background: rgba(255,255,255,0.1); padding: 12px 25px; border-radius: 8px; }
+        .status-connected { background: #4caf50; color: white; font-weight: bold; }
+        .status-disconnected { background: #f44336; color: white; font-weight: bold; }
+        
+        .mode-panel {
+            background: linear-gradient(135deg, #2d3561, #1f2647);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 3px solid #ff9800;
+        }
+        .mode-panel h3 { color: #ff9800; font-size: 1.5em; margin-bottom: 20px; }
+        .mode-status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .mode-item { background: rgba(255,255,255,0.1); padding: 20px; border-radius: 10px; text-align: center; border: 2px solid transparent; }
+        .mode-active { background: rgba(76,175,80,0.3); border-color: #4caf50; box-shadow: 0 0 20px rgba(76,175,80,0.5); }
+        .mode-label { font-size: 0.9em; color: #aaa; margin-bottom: 10px; }
+        .mode-value { font-size: 1.8em; font-weight: bold; }
+        .mode-value-on { color: #4caf50; }
+        .mode-value-off { color: #f44336; }
+        
+        .mode-info {
+            background: rgba(0,217,255,0.1);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 15px;
+            text-align: center;
+            font-size: 1.1em;
+        }
+        
+        .control-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 25px; margin-bottom: 25px; }
+        
+        .panel {
+            background: linear-gradient(135deg, #2d3561, #1f2647);
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            border: 3px solid #00d9ff;
+        }
+        .panel-disabled { opacity: 0.5; border-color: #666; }
+        
+        .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; }
+        .panel-title { font-size: 2em; font-weight: bold; color: #00d9ff; }
+        .panel-status { width: 80px; height: 80px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.3em; }
+        .status-on { background: radial-gradient(circle, #4caf50, #2e7d32); color: white; animation: pulse 2s infinite; }
+        .status-off { background: radial-gradient(circle, #666, #444); color: #ccc; }
+        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+        
+        .info-box { background: rgba(0,217,255,0.15); padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; line-height: 1.8; }
+        .info-box strong { color: #00d9ff; }
+        
+        .d1-control {
+            background: rgba(255,152,0,0.1);
+            border: 2px solid #ff9800;
+            padding: 25px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        .d1-label { font-size: 1.3em; color: #ff9800; font-weight: bold; margin-bottom: 15px; text-align: center; }
+        
+        .percentage-display {
+            font-size: 3.5em;
+            color: #00d9ff;
+            font-weight: bold;
+            text-align: center;
+            margin: 20px 0;
+            padding: 25px;
+            background: rgba(0,217,255,0.1);
+            border-radius: 10px;
+            border: 3px solid #00d9ff;
+        }
+        
+        .d1-value-row {
+            display: flex;
+            justify-content: space-between;
+            margin: 15px 0;
+            padding: 15px;
+            background: rgba(76,175,80,0.1);
+            border-radius: 8px;
+            border: 2px solid #4caf50;
+        }
+        .d1-value-label { font-size: 1.1em; color: #aaa; }
+        .d1-value-number { font-size: 1.5em; color: #4caf50; font-weight: bold; }
+        
+        .slider-container { margin: 25px 0; }
+        .slider-labels {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+            color: #aaa;
+        }
+        .slider {
+            width: 100%;
+            height: 20px;
+            border-radius: 10px;
+            background: linear-gradient(to right, #2e7d32, #ff9800, #f44336);
+            outline: none;
+            -webkit-appearance: none;
+        }
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 35px;
+            height: 35px;
+            border-radius: 50%;
+            background: #00d9ff;
+            cursor: pointer;
+            box-shadow: 0 0 10px rgba(0,217,255,0.8);
+        }
+        .slider:disabled::-webkit-slider-thumb { background: #666; cursor: not-allowed; }
+        
+        .d1-input-group { display: flex; gap: 15px; align-items: center; margin-top: 20px; }
+        .d1-input {
+            flex: 1;
+            padding: 20px;
+            font-size: 2em;
+            text-align: center;
+            border: 3px solid #ff9800;
+            border-radius: 10px;
+            background: #1f2647;
+            color: #00d9ff;
+            font-weight: bold;
+        }
+        .d1-input:disabled { background: #333; color: #666; border-color: #666; }
+        .d1-input:focus { outline: none; border-color: #00d9ff; box-shadow: 0 0 15px rgba(0,217,255,0.5); }
+        
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .btn {
+            padding: 18px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.2em;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+        }
+        .btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+        .btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        .btn-on { background: linear-gradient(135deg, #4caf50, #45a049); color: white; }
+        .btn-off { background: linear-gradient(135deg, #f44336, #da190b); color: white; }
+        .btn-set { 
+            background: linear-gradient(135deg, #ff9800, #f57c00); 
+            color: white; 
+            padding: 20px; 
+            font-size: 1.3em;
+            box-shadow: 0 4px 15px rgba(255,152,0,0.5);
+        }
+        .btn-set:hover:not(:disabled) { box-shadow: 0 6px 25px rgba(255,152,0,0.8); }
+        
+        .quick-values {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .quick-btn {
+            padding: 12px 8px;
+            background: rgba(0,217,255,0.2);
+            border: 2px solid #00d9ff;
+            border-radius: 8px;
+            color: #00d9ff;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.9em;
+        }
+        .quick-btn:hover:not(:disabled) {
+            background: rgba(0,217,255,0.4);
+            transform: scale(1.05);
+        }
+        .quick-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+        
+        .refresh-btn { background: linear-gradient(135deg, #00d9ff, #00b8d9); color: #000; padding: 12px 25px; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .timestamp { text-align: center; color: #888; margin-top: 25px; }
+        
+        @media (max-width: 768px) {
+            .control-grid, .mode-status { grid-template-columns: 1fr; }
+            .quick-values { grid-template-columns: repeat(3, 1fr); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏭 PLC Control - Vibrofeeder % Control</h1>
+            <div class="status-bar">
+                <div id="connectionStatus" class="status-item status-disconnected">⚠️ Connecting...</div>
+                <div class="status-item">Last Update: <span id="lastUpdate">-</span></div>
+                <button class="refresh-btn" onclick="loadStatus()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        <div class="mode-panel">
+            <h3>⚙️ Operation Mode</h3>
+            <div class="mode-status">
+                <div id="remoteModePanel" class="mode-item">
+                    <div class="mode-label">REMOTE MODE (X2/M1)</div>
+                    <div id="remoteModeValue" class="mode-value mode-value-off">-</div>
+                </div>
+                <div id="autoModePanel" class="mode-item">
+                    <div class="mode-label">AUTO MODE (X1/M2)</div>
+                    <div id="autoModeValue" class="mode-value mode-value-off">-</div>
+                </div>
+                <div id="manualModePanel" class="mode-item">
+                    <div class="mode-label">MANUAL MODE (M3)</div>
+                    <div id="manualModeValue" class="mode-value mode-value-off">-</div>
+                </div>
+            </div>
+            <div class="mode-info" id="modeInfo">
+                <strong id="currentModeText">-</strong>
+            </div>
+        </div>
+
+        <div class="control-grid">
+            <div id="vibroPanel" class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Vibrofeeder</div>
+                    <div id="vibroStatus" class="panel-status status-off">OFF</div>
+                </div>
+                
+                <div class="d1-control">
+                    <div class="d1-label">📊 Vibrofeeder Speed Control</div>
+                    
+                    <div class="percentage-display" id="percentDisplay">0%</div>
+                    
+                    <div class="d1-value-row">
+                        <span class="d1-value-label">D1 Setpoint:</span>
+                        <span class="d1-value-number" id="d1ValueDisplay">800</span>
+                    </div>
+                    
+                    <div class="slider-container">
+                        <div class="slider-labels">
+                            <span>0%</span>
+                            <span>25%</span>
+                            <span>50%</span>
+                            <span>75%</span>
+                            <span>100%</span>
+                        </div>
+                        <input type="range" min="0" max="100" value="0" step="5" class="slider" id="percentSlider" disabled>
+                    </div>
+                    
+                    <div class="d1-input-group">
+                        <input type="number" id="percentInput" class="d1-input" min="0" max="100" value="0" step="5" placeholder="0-100" disabled>
+                        <button id="setBtn" class="btn btn-set" onclick="setPercentage()" disabled>✓ SET %</button>
+                    </div>
+                    
+                    <div class="quick-values">
+                        <button class="quick-btn" onclick="quickSetPercent(10)" disabled id="quick10">10%<br>→1100</button>
+                        <button class="quick-btn" onclick="quickSetPercent(30)" disabled id="quick30">30%<br>→1300</button>
+                        <button class="quick-btn" onclick="quickSetPercent(50)" disabled id="quick50">50%<br>→1500</button>
+                        <button class="quick-btn" onclick="quickSetPercent(70)" disabled id="quick70">70%<br>→1700</button>
+                        <button class="quick-btn" onclick="quickSetPercent(100)" disabled id="quick100">100%<br>→2000</button>
+                    </div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>Y1 Output:</strong> <span id="vibroY" style="font-weight:bold;">-</span><br>
+                    <strong>M4 Status:</strong> <span id="vibroM4">-</span>
+                </div>
+                
+                <div class="controls">
+                    <button id="vibroOnBtn" class="btn btn-on" onclick="controlVibro(true)" disabled>⚡ START</button>
+                    <button id="vibroOffBtn" class="btn btn-off" onclick="controlVibro(false)" disabled>🛑 STOP</button>
+                </div>
+            </div>
+
+            <div id="blowerPanel" class="panel">
+                <div class="panel-header">
+                    <div class="panel-title">Blower</div>
+                    <div id="blowerStatus" class="panel-status status-off">OFF</div>
+                </div>
+                
+                <div class="info-box">
+                    <strong>Y0 Output:</strong> <span id="blowerY" style="font-weight:bold;">-</span><br>
+                    <strong>M7 Status:</strong> <span id="blowerM7">-</span>
+                </div>
+                
+                <div class="controls">
+                    <button id="blowerOnBtn" class="btn btn-on" onclick="controlBlower(true)" disabled>⚡ START</button>
+                    <button id="blowerOffBtn" class="btn btn-off" onclick="controlBlower(false)" disabled>🛑 STOP</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="timestamp" id="timestamp"></div>
+    </div>
+
+    <script>
+        const API_BASE = window.location.origin + '/api';
+        let autoRefresh = null;
+        let currentMode = 'UNKNOWN';
+
+        // ✅ CHECK 1: Percentage to D1 conversion (0-100% → 800-2000)
+        function percentToD1(percent) {
+            if (percent <= 5) return 800;
+            if (percent < 10) return 800;
+            if (percent < 20) return 1100;
+            if (percent < 30) return 1200;
+            if (percent < 40) return 1300;
+            if (percent < 50) return 1400;
+            if (percent < 60) return 1500;
+            if (percent < 70) return 1600;
+            if (percent < 80) return 1700;
+            if (percent < 90) return 1800;
+            if (percent < 100) return 1900;
+            return 2000;
+        }
+        
+        // ✅ CHECK 2: D1 to percentage conversion (inverse)
+        function d1ToPercent(d1Value) {
+            if (d1Value <= 800) return 5;
+            if (d1Value < 1100) return 5;
+            if (d1Value < 1200) return 10;
+            if (d1Value < 1300) return 20;
+            if (d1Value < 1400) return 30;
+            if (d1Value < 1500) return 40;
+            if (d1Value < 1600) return 50;
+            if (d1Value < 1700) return 60;
+            if (d1Value < 1800) return 70;
+            if (d1Value < 1900) return 80;
+            if (d1Value < 2000) return 90;
+            return 100;
+        }
+
+        window.onload = function() {
+            loadStatus();
+            autoRefresh = setInterval(loadStatus, 2000);
+            
+            document.getElementById('percentSlider').addEventListener('input', function() {
+                updateDisplays(parseInt(this.value));
+                document.getElementById('percentInput').value = this.value;
+            });
+            
+            document.getElementById('percentInput').addEventListener('input', function() {
+                const val = Math.min(100, Math.max(0, parseInt(this.value) || 0));
+                updateDisplays(val);
+                document.getElementById('percentSlider').value = val;
+            });
+        };
+
+        function updateDisplays(percent) {
+            const d1Value = percentToD1(percent);
+            document.getElementById('percentDisplay').textContent = percent + '%';
+            document.getElementById('d1ValueDisplay').textContent = d1Value;
+        }
+
+        async function loadStatus() {
+            try {
+                const res = await fetch(`${API_BASE}/status`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                
+                const data = await res.json();
+                
+                const connEl = document.getElementById('connectionStatus');
+                connEl.className = 'status-item ' + (data.connected ? 'status-connected' : 'status-disconnected');
+                connEl.textContent = data.connected ? '✅ Connected' : '❌ Disconnected';
+                
+                determineMode(data.x_inputs, data.m_coils);
+                updateFromD1(data.d_registers.D1 || 800);
+                updateBlower(data.y_outputs.Y0, data.m_coils.M7);
+                updateVibro(data.y_outputs.Y1, data.m_coils.M4);
+                
+                const now = new Date();
+                document.getElementById('lastUpdate').textContent = now.toLocaleTimeString();
+                document.getElementById('timestamp').textContent = `Last updated: ${now.toLocaleString()}`;
+                
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        function updateFromD1(d1Value) {
+            const percent = d1ToPercent(d1Value);
+            
+            if (currentMode !== 'REMOTE' || !document.getElementById('percentInput').value) {
+                document.getElementById('percentInput').value = percent;
+                document.getElementById('percentSlider').value = percent;
+                updateDisplays(percent);
+            }
+        }
+
+        // ✅ CHECK 3: Mode Detection (Only ONE active at a time)
+        function determineMode(xInputs, mCoils) {
+            const x1 = xInputs.X1 || false;
+            const x2 = xInputs.X2 || false;
+            const m1 = mCoils.M1 || false;
+            const m2 = mCoils.M2 || false;
+            const m3 = mCoils.M3 || false;
+            
+            // CORRECTED LOGIC: Check M coils ONLY (one at a time)
+            let mode = 'UNKNOWN';
+            let remoteActive = false;
+            let autoActive = false;
+            let manualActive = false;
+            
+            if (m1) {
+                mode = 'REMOTE';
+                remoteActive = true;
+            } else if (m2) {
+                mode = 'AUTO';
+                autoActive = true;
+            } else if (m3) {
+                mode = 'MANUAL';
+                manualActive = true;
+            }
+            
+            currentMode = mode;
+            
+            document.getElementById('remoteModeValue').textContent = remoteActive ? 'ACTIVE' : 'INACTIVE';
+            document.getElementById('remoteModeValue').className = 'mode-value ' + (remoteActive ? 'mode-value-on' : 'mode-value-off');
+            document.getElementById('remoteModePanel').className = 'mode-item ' + (remoteActive ? 'mode-active' : '');
+            
+            document.getElementById('autoModeValue').textContent = autoActive ? 'ACTIVE' : 'INACTIVE';
+            document.getElementById('autoModeValue').className = 'mode-value ' + (autoActive ? 'mode-value-on' : 'mode-value-off');
+            document.getElementById('autoModePanel').className = 'mode-item ' + (autoActive ? 'mode-active' : '');
+            
+            document.getElementById('manualModeValue').textContent = manualActive ? 'ACTIVE' : 'INACTIVE';
+            document.getElementById('manualModeValue').className = 'mode-value ' + (manualActive ? 'mode-value-on' : 'mode-value-off');
+            document.getElementById('manualModePanel').className = 'mode-item ' + (manualActive ? 'mode-active' : '');
+            
+            const modeText = document.getElementById('currentModeText');
+            const modeInfo = document.getElementById('modeInfo');
+            
+            if (mode === 'REMOTE') {
+                modeText.textContent = '🟢 REMOTE MODE - Dashboard control ENABLED';
+                modeText.style.color = '#4caf50';
+                modeInfo.style.borderColor = '#4caf50';
+                enableControls(true);
+            } else if (mode === 'AUTO') {
+                modeText.textContent = '🟡 AUTO MODE - Dashboard READ ONLY';
+                modeText.style.color = '#ff9800';
+                modeInfo.style.borderColor = '#ff9800';
+                enableControls(false);
+            } else if (mode === 'MANUAL') {
+                modeText.textContent = '🔴 MANUAL MODE - Dashboard DISABLED';
+                modeText.style.color = '#f44336';
+                modeInfo.style.borderColor = '#f44336';
+                enableControls(false);
+            } else {
+                modeText.textContent = '⚪ MODE UNKNOWN';
+                modeText.style.color = '#888';
+                enableControls(false);
+            }
+        }
+
+        function enableControls(enable) {
+            document.getElementById('percentInput').disabled = !enable;
+            document.getElementById('percentSlider').disabled = !enable;
+            document.getElementById('setBtn').disabled = !enable;
+            document.getElementById('quick10').disabled = !enable;
+            document.getElementById('quick30').disabled = !enable;
+            document.getElementById('quick50').disabled = !enable;
+            document.getElementById('quick70').disabled = !enable;
+            document.getElementById('quick100').disabled = !enable;
+            
+            document.getElementById('vibroOnBtn').disabled = !enable;
+            document.getElementById('vibroOffBtn').disabled = !enable;
+            document.getElementById('vibroPanel').className = 'panel' + (enable ? '' : ' panel-disabled');
+            
+            document.getElementById('blowerOnBtn').disabled = !enable;
+            document.getElementById('blowerOffBtn').disabled = !enable;
+            document.getElementById('blowerPanel').className = 'panel' + (enable ? '' : ' panel-disabled');
+        }
+
+        function updateBlower(yState, m7State) {
+            const statusEl = document.getElementById('blowerStatus');
+            statusEl.textContent = yState ? 'ON' : 'OFF';
+            statusEl.className = 'panel-status ' + (yState ? 'status-on' : 'status-off');
+            document.getElementById('blowerY').textContent = yState ? 'ON' : 'OFF';
+            document.getElementById('blowerY').style.color = yState ? '#4caf50' : '#f44336';
+            document.getElementById('blowerM7').textContent = m7State ? 'ON' : 'OFF';
+            document.getElementById('blowerM7').style.color = m7State ? '#4caf50' : '#f44336';
+        }
+
+        function updateVibro(yState, m4State) {
+            const statusEl = document.getElementById('vibroStatus');
+            statusEl.textContent = yState ? 'ON' : 'OFF';
+            statusEl.className = 'panel-status ' + (yState ? 'status-on' : 'status-off');
+            document.getElementById('vibroY').textContent = yState ? 'ON' : 'OFF';
+            document.getElementById('vibroY').style.color = yState ? '#4caf50' : '#f44336';
+            document.getElementById('vibroM4').textContent = m4State ? 'ON' : 'OFF';
+            document.getElementById('vibroM4').style.color = m4State ? '#4caf50' : '#f44336';
+        }
+
+        function quickSetPercent(percent) {
+            document.getElementById('percentInput').value = percent;
+            document.getElementById('percentSlider').value = percent;
+            updateDisplays(percent);
+            setPercentage();
+        }
+
+        // ✅ CHECK 4: Percentage Control (D1 write)
+        async function setPercentage() {
+            if (currentMode !== 'REMOTE') {
+                alert('❌ Control only available in REMOTE mode (X2/M1)!');
+                return;
+            }
+            
+            const percent = parseInt(document.getElementById('percentInput').value);
+            
+            if (isNaN(percent) || percent < 0 || percent > 100) {
+                alert('❌ Please enter a percentage between 0 and 100');
+                return;
+            }
+            
+            const d1Value = percentToD1(percent);
+            
+            try {
+                const res = await fetch(`${API_BASE}/d/1`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({value: d1Value})
+                });
+                
+                const result = await res.json();
+                
+                if (result.success) {
+                    updateDisplays(percent);
+                    console.log(`✅ Set ${percent}% (D1=${d1Value})`);
+                    setTimeout(loadStatus, 500);
+                } else {
+                    alert('❌ Failed to set percentage');
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // ✅ CHECK 5 & 6: Blower Control (START + STOP with M100 management)
+        async function controlBlower(state) {
+            if (currentMode !== 'REMOTE') {
+                alert(`❌ Control only available in REMOTE mode!\nCurrent mode: ${currentMode}`);
+                return;
+            }
+            
+            try {
+                if (state) {
+                    // ✅ START: M1 → M100 → wait 200ms → Y0
+                    console.log('🟢 Blower START: M1 + M100 + Y0');
+                    await fetch(`${API_BASE}/m/1`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    await fetch(`${API_BASE}/m/100`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    await new Promise(r => setTimeout(r, 200));
+                    const res = await fetch(`${API_BASE}/y/0`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    if (res.ok) setTimeout(loadStatus, 300);
+                } else {
+                    // ✅ STOP: Y0 → wait 100ms → M100 (KEY FIX!)
+                    console.log('🔴 Blower STOP: Y0 off + M100 off');
+                    await fetch(`${API_BASE}/y/0`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: false})
+                    });
+                    await new Promise(r => setTimeout(r, 100));
+                    await fetch(`${API_BASE}/m/100`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: false})
+                    });
+                    setTimeout(loadStatus, 300);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+
+        // ✅ CHECK 7 & 8: Vibrofeeder Control (START + STOP with M102 management)
+        async function controlVibro(state) {
+            if (currentMode !== 'REMOTE') {
+                alert(`❌ Control only available in REMOTE mode!\nCurrent mode: ${currentMode}`);
+                return;
+            }
+            
+            try {
+                if (state) {
+                    // ✅ START: M1 → M102 → wait 200ms → Y1
+                    console.log('🟢 Vibrofeeder START: M1 + M102 + Y1');
+                    await fetch(`${API_BASE}/m/1`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    await fetch(`${API_BASE}/m/102`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    await new Promise(r => setTimeout(r, 200));
+                    const res = await fetch(`${API_BASE}/y/1`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: true})
+                    });
+                    if (res.ok) setTimeout(loadStatus, 300);
+                } else {
+                    // ✅ STOP: Y1 → wait 100ms → M102 (KEY FIX!)
+                    console.log('🔴 Vibrofeeder STOP: Y1 off + M102 off');
+                    await fetch(`${API_BASE}/y/1`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: false})
+                    });
+                    await new Promise(r => setTimeout(r, 100));
+                    await fetch(`${API_BASE}/m/102`, {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({state: false})
+                    });
+                    setTimeout(loadStatus, 300);
+                }
+            } catch (error) {
+                alert('❌ Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
