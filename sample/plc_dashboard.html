@@ -317,7 +317,6 @@
         let autoRefresh = null;
         let currentMode = 'UNKNOWN';
 
-        // ✅ CHECK 1: Percentage to D1 conversion (0-100% → 800-2000)
         function percentToD1(percent) {
             if (percent <= 5) return 800;
             if (percent < 10) return 800;
@@ -333,7 +332,6 @@
             return 2000;
         }
         
-        // ✅ CHECK 2: D1 to percentage conversion (inverse)
         function d1ToPercent(d1Value) {
             if (d1Value <= 800) return 5;
             if (d1Value < 1100) return 5;
@@ -406,15 +404,11 @@
             }
         }
 
-        // ✅ CHECK 3: Mode Detection (Only ONE active at a time)
         function determineMode(xInputs, mCoils) {
-            const x1 = xInputs.X1 || false;
-            const x2 = xInputs.X2 || false;
             const m1 = mCoils.M1 || false;
             const m2 = mCoils.M2 || false;
             const m3 = mCoils.M3 || false;
             
-            // CORRECTED LOGIC: Check M coils ONLY (one at a time)
             let mode = 'UNKNOWN';
             let remoteActive = false;
             let autoActive = false;
@@ -516,7 +510,6 @@
             setPercentage();
         }
 
-        // ✅ CHECK 4: Percentage Control (D1 write)
         async function setPercentage() {
             if (currentMode !== 'REMOTE') {
                 alert('❌ Control only available in REMOTE mode (X2/M1)!');
@@ -544,7 +537,7 @@
                 if (result.success) {
                     updateDisplays(percent);
                     console.log(`✅ Set ${percent}% (D1=${d1Value})`);
-                    setTimeout(loadStatus, 500);
+                    loadStatus();  // ⚡ INSTANT refresh - no delay
                 } else {
                     alert('❌ Failed to set percentage');
                 }
@@ -553,7 +546,7 @@
             }
         }
 
-        // ✅ CHECK 5 & 6: Blower Control (START + STOP with M100 management)
+        // ⚡ NO DELAYS - INSTANT RESPONSE
         async function controlBlower(state) {
             if (currentMode !== 'REMOTE') {
                 alert(`❌ Control only available in REMOTE mode!\nCurrent mode: ${currentMode}`);
@@ -562,47 +555,46 @@
             
             try {
                 if (state) {
-                    // ✅ START: M1 → M100 → wait 200ms → Y0
-                    console.log('🟢 Blower START: M1 + M100 + Y0');
-                    await fetch(`${API_BASE}/m/1`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    await fetch(`${API_BASE}/m/100`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    await new Promise(r => setTimeout(r, 200));
-                    const res = await fetch(`${API_BASE}/y/0`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    if (res.ok) setTimeout(loadStatus, 300);
+                    // START: Send all commands in parallel
+                    await Promise.all([
+                        fetch(`${API_BASE}/m/1`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        }),
+                        fetch(`${API_BASE}/m/100`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        }),
+                        fetch(`${API_BASE}/y/0`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        })
+                    ]);
                 } else {
-                    // ✅ STOP: Y0 → wait 100ms → M100 (KEY FIX!)
-                    console.log('🔴 Blower STOP: Y0 off + M100 off');
-                    await fetch(`${API_BASE}/y/0`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: false})
-                    });
-                    await new Promise(r => setTimeout(r, 100));
-                    await fetch(`${API_BASE}/m/100`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: false})
-                    });
-                    setTimeout(loadStatus, 300);
+                    // STOP: Send all commands in parallel
+                    await Promise.all([
+                        fetch(`${API_BASE}/y/0`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: false})
+                        }),
+                        fetch(`${API_BASE}/m/100`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: false})
+                        })
+                    ]);
                 }
+                loadStatus();  // ⚡ INSTANT refresh
             } catch (error) {
                 alert('❌ Error: ' + error.message);
             }
         }
 
-        // ✅ CHECK 7 & 8: Vibrofeeder Control (START + STOP with M102 management)
+        // ⚡ NO DELAYS - INSTANT RESPONSE
         async function controlVibro(state) {
             if (currentMode !== 'REMOTE') {
                 alert(`❌ Control only available in REMOTE mode!\nCurrent mode: ${currentMode}`);
@@ -611,41 +603,40 @@
             
             try {
                 if (state) {
-                    // ✅ START: M1 → M102 → wait 200ms → Y1
-                    console.log('🟢 Vibrofeeder START: M1 + M102 + Y1');
-                    await fetch(`${API_BASE}/m/1`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    await fetch(`${API_BASE}/m/102`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    await new Promise(r => setTimeout(r, 200));
-                    const res = await fetch(`${API_BASE}/y/1`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: true})
-                    });
-                    if (res.ok) setTimeout(loadStatus, 300);
+                    // START: Send all commands in parallel
+                    await Promise.all([
+                        fetch(`${API_BASE}/m/1`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        }),
+                        fetch(`${API_BASE}/m/102`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        }),
+                        fetch(`${API_BASE}/y/1`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: true})
+                        })
+                    ]);
                 } else {
-                    // ✅ STOP: Y1 → wait 100ms → M102 (KEY FIX!)
-                    console.log('🔴 Vibrofeeder STOP: Y1 off + M102 off');
-                    await fetch(`${API_BASE}/y/1`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: false})
-                    });
-                    await new Promise(r => setTimeout(r, 100));
-                    await fetch(`${API_BASE}/m/102`, {
-                        method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({state: false})
-                    });
-                    setTimeout(loadStatus, 300);
+                    // STOP: Send all commands in parallel
+                    await Promise.all([
+                        fetch(`${API_BASE}/y/1`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: false})
+                        }),
+                        fetch(`${API_BASE}/m/102`, {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({state: false})
+                        })
+                    ]);
                 }
+                loadStatus();  // ⚡ INSTANT refresh
             } catch (error) {
                 alert('❌ Error: ' + error.message);
             }
